@@ -19,7 +19,8 @@ import cv2.aruco as aruco
 
 print("[INFO] Program warming up")
 
-CAM_CONFIG_FNAME = './configs/cali_640x480.yaml'
+CAM_INT_FNAME = './configs/cali_640x480.yaml'
+CAM_EXT_FNAME = './configs/cali_extrinsic.yaml'
 SERV_CONFIG_FNAME = './configs/server_config.yaml'
 
 # Arugs parsing
@@ -30,14 +31,26 @@ ap.add_argument("-d", "--display", type=int, default=-1,
 	help="Whether or not frames should be displayed")
 args = vars(ap.parse_args())
 
-# Loading configs
+"""
+Loading configs
+""" 
 with open(SERV_CONFIG_FNAME, 'r') as f:
     conf_serv = yaml.safe_load(f)
 
-conf_cam = cv2.FileStorage(CAM_CONFIG_FNAME, cv2.FILE_STORAGE_READ)
-mat_coef = conf_cam.getNode("matrix_coefficients").mat()
-dist_coef = conf_cam.getNode("distortion_coefficients").mat()
-resolution = (int(conf_cam.getNode("image_width").real()), int(conf_cam.getNode("image_height").real()))
+# Intrinsic parameters
+cam_int = cv2.FileStorage(CAM_INT_FNAME, cv2.FILE_STORAGE_READ)
+mat_coef = cam_int.getNode("matrix_coefficients").mat()
+dist_coef = cam_int.getNode("distortion_coefficients").mat()
+resolution = (int(cam_int.getNode("image_width").real()), int(cam_int.getNode("image_height").real()))
+
+# Extrinsic parameters
+cam_ext = cv2.FileStorage(CAM_EXT_FNAME, cv2.FILE_STORAGE_READ)
+rvec = cam_ext.getNode("rvecs").mat()
+tvec = cam_ext.getNode("tvecs").mat()
+cRo, _ = cv2.Rodrigues(rvec)
+cTo = np.vstack((np.hstack((cRo, tvec)), [0, 0, 0, 1]))
+oTc = np.linalg.inv(cTo)
+print(oTc)
  
 # UDP setup
 UDP_client = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
@@ -81,6 +94,7 @@ def main():
             for i in range(0, len(ids)):  # Iterate in markers
                 obj_list[int(ids[i, 0])] = 1
                 # Estimate pose of each marker and return the values rvec and tvec---different from camera coefficients
+                # The returned transformation is the one that transforms points from each marker coordinate system to the camera coordinate system.
                 rvec, tvec, markerPoints = aruco.estimatePoseSingleMarkers(corners[i], 
                         0.1, 
                         mat_coef, 
@@ -93,9 +107,14 @@ def main():
                         mat_coef, 
                         dist_coef, 
                         rvec, tvec, 0.01)  # Draw Axis
-                tag_info.append({'oid': int(ids[i, 0]), 'pos': np.squeeze(tvec).tolist()})
 
-            socket_send(json.dumps({'cid': conf_serv['client_id'], 'objs': tag_info}))
+                # Coordinate transformation
+                cP = np.append(tvec, 1).T
+                #print(cP)
+                oP = oTc @ cP
+                tag_info.append({'oid': int(ids[i, 0]), 'pos': np.squeeze(oP[:2]).tolist()})
+
+            # socket_send(json.dumps({'cid': conf_serv['client_id'], 'objs': tag_info}))
     
         # check to see if the frame should be displayed to our screen
         if args["display"] > 0:
