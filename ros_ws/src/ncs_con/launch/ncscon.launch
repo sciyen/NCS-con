@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+	<node pkg="ncs_con" type="ncscon_node.py" name="ncscon_node">
+	</node>
+</launch>
