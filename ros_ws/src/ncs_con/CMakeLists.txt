@@ -10,6 +10,7 @@ project(ncs_con)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  pose_est
   std_msgs
   message_generation
 )
@@ -139,6 +140,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_sub src/sub.cpp)
+add_executable(${PROJECT_NAME}_detect src/detect_markers.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -153,6 +155,11 @@ add_executable(${PROJECT_NAME}_sub src/sub.cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_sub
   ${catkin_LIBRARIES}
+)
+
+target_link_libraries(${PROJECT_NAME}_detect
+  ${catkin_LIBRARIES}
+  #  multicam_mapper dataset cam_config aruco ${pcl_libs} ${OpenCV_LIBS}
 )
 
 #############
