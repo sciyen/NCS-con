@@ -9,6 +9,7 @@
 class Initializer
 {
 public:
+    Initializer() {};
     Initializer(double marker_s, std::vector<CamConfig> &cam_c, const std::set<int> &excluded_cs=std::set<int>());
     Initializer(std::vector<std::vector<std::vector<aruco::Marker>>> &dts, double marker_s, std::vector<CamConfig> &cam_c, const std::set<int> &excluded_cs=std::set<int>());
     static std::vector<std::vector<std::vector<aruco::Marker>>> read_detections_file(std::string path, const std::vector<int> &subseqs=std::vector<int>());

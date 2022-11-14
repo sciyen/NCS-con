@@ -129,8 +129,9 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN_INCLUDE_DIRS}
   eigen3
-  aruco
+  aruco/aruco
   sgl/src
 )
 
@@ -139,13 +140,17 @@ add_subdirectory(include/aruco/aruco)
 add_subdirectory(src)
 
 ## Declare a C++ library
-#add_library(${PROJECT_NAME}
-#  src/multicam_mapper.cpp
-#   src/${PROJECT_NAME}/dataset.cpp
-#   src/${PROJECT_NAME}/cam_config.cpp
-#   src/${PROJECT_NAME}/.cpp
-#   src/${PROJECT_NAME}/multicam_mapper.cpp
-#)
+add_library(${PROJECT_NAME}
+  src/multicam_mapper.cpp
+  src/dataset.cpp
+  src/cam_config.cpp
+  src/multicam_mapper.cpp
+  src/aruco_serdes.cpp
+  src/initializer.cpp
+  src/pointcloud_drawer.cpp
+  src/filesystem.cpp
+  src/image_array_detector.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -196,8 +201,8 @@ add_subdirectory(src)
 ## Mark cpp header files for installation
 #install(DIRECTORY include/${PROJECT_NAME}/
 #  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  # FILES_MATCHING PATTERN "*.h"
-  # PATTERN ".svn" EXCLUDE
+#  FILES_MATCHING PATTERN "*.h"
+#  PATTERN ".svn" EXCLUDE
 #)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)

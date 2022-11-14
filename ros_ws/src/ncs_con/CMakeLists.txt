@@ -15,6 +15,16 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
+find_package(OpenCV 3.0.0 REQUIRED)
+find_package(PCL)
+
+if(PCL_FOUND)
+    INCLUDE_DIRECTORIES(${PCL_INCLUDE_DIRS})
+    set(pcl_libs "${PCL_VISUALIZATION_LIBRARIES}")
+    add_definitions(-DPCL)
+endif(PCL_FOUND)
+
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -122,10 +132,14 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
+include_directories(
+    ../pose_est/include/eigen3
+    ../pose_est/include/aruco
+)
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/ncs-con.cpp

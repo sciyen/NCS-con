@@ -77,7 +77,7 @@ std::vector<CamConfig> CamConfig::read_cam_configs(std::string folder_path) {
     for (std::string dir_name : dirs_list) {
         for (std::string ext : possible_extensions) {
             std::string file_path =
-                folder_path + "/" + dir_name + "/" + "calib." + ext;
+                folder_path + "/" + dir_name + "/" + "cali_640x480." + ext;
             CamConfig cc;
             if (cc.read_from_file(file_path)) result.push_back(cc);
         }
