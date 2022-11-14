@@ -1,29 +1,35 @@
 #!/usr/bin/env python2.7
+import time
+import json
 import rospy
 import socket
 import threading
-from ncs_con.msg import Con_msg
-from ncs_con.msg import cam_msg
-from ncs_con.msg import obj_msg
-import json
-import time
+
+PUB_MODE = '2d'
+
+if PUB_MODE == '2d':
+    from ncs_con.msg import Con_msg_2d
+    from ncs_con.msg import cam_msg_2d
+    from ncs_con.msg import obj_msg_2d
+
+if PUB_MODE == '3d':
+    from ncs_con.msg import Con_msg
+    from ncs_con.msg import cam_msg
+    from ncs_con.msg import obj_msg
+
 
 class NcsconThread():
     def __init__(self, port, pubTopic):
         self.indata = [{} for i in range(5)]
         self.port = port
-        self.msg = Con_msg()
-        self.pub = rospy.Publisher(pubTopic, Con_msg, queue_size=1)
 
-        cam_num = 2
-        obj_num = 3
-        for i in range(0,obj_num):
-            om = obj_msg()
-            for j in range(0,cam_num):
-                cm = cam_msg()
-                om.cams.append(cm)
-            self.msg.objs.append(om)
-
+        # Constructing message
+        if PUB_MODE == '2d':
+            self.msg = Con_msg_2d()
+            self.pub = rospy.Publisher(pubTopic, Con_msg_2d, queue_size=1)
+        if PUB_MODE == '3d':
+            self.msg = Con_msg()
+            self.pub = rospy.Publisher(pubTopic, Con_msg, queue_size=1)
 
         in_thread = threading.Thread(target=self.__in_thread)
         in_thread.daemon = True
@@ -43,49 +49,70 @@ class NcsconThread():
 
     def __pub_thread(self):
         starttime = time.time()
-        frequency = 20
-        period = 0.05
+        frequency = 10
+        period = 0.1
         while True:
-            #print("=================")
-            #print(time.time()-starttime)
+            # print("=================")
+            # print(time.time()-starttime)
             time.sleep(period-((time.time() - starttime) % period))
             self.pub.publish(self.msg)
+            self.__reset_buffer()
+
+    def __reset_buffer(self):
+        if PUB_MODE == '2d':
+            self.msg = Con_msg_2d()
+        if PUB_MODE == '3d':
+            self.msg = Con_msg()
 
     def __update(self, data):
-        #print(data)
+        # New incoming socket data from pi
         objs = json.loads(data)
         cid = objs[u'cid']
-        
+
+        if PUB_MODE == '2d':
+            cm = cam_msg_2d()
+            om = obj_msg_2d()
+        if PUB_MODE == '3d':
+            cm = cam_msg()
+            om = obj_msg()
+
+        cm.cid = cid
+
+        obj_list = {}
         for obj in objs[u'objs']:
             oid = obj[u'oid']
-            self.msg.objs[oid].cams[cid-1].pos = obj[u'pos']
-            self.msg.objs[oid].cams[cid-1].update_time = rospy.get_rostime()
-            print(self.msg)
+            if oid in obj_list:
+                continue
 
-        """
-        for obj in objs[u'objs']:              
-            self.indata[obj[u'oid']][cid] = {
-                    'pos': obj[u'pos'],
-                    'update_time': time.time()
-                    }
-        #print("in_id: " + str(self.in_id))
-        #print("new message " + str(self.in_id) + ": ")
-        #print(self.indata)
-        print(json.dumps(self.indata, sort_keys=True, indent=2))
-        """
+            obj_list[oid] = 1
+            if PUB_MODE == '2d':
+                om = obj_msg_2d()
+            if PUB_MODE == '3d':
+                om = obj_msg()
+            om.cid = cid
+            om.oid = oid
+            om.pos = obj[u'pos']
+            om.update_time = rospy.get_rostime()
+            cm.objs.append(om)
 
+        # check if cid exist
+        try:
+            cid_list = [c.cid for c in self.msg.cams]
+            idx = cid_list.index(cid)
+            self.msg.cams[idx] = cm
+        except ValueError:
+            # cid not exist
+            self.msg.cams.append(cm)
 
+        #print(json.dumps(data, sort_keys=True, indent=2))
 
 
 def main():
     rospy.init_node("ncscon_node")
     thread1 = NcsconThread(5566, "ncscon_topic")
-
+    print("Start listening")
     rospy.spin()
-
 
 
 if __name__ == "__main__":
     main()
-
-

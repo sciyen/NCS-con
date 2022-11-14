@@ -65,7 +65,9 @@ add_message_files(
   cam_msg.msg
   obj_msg.msg
   Con_msg.msg
-#   Message2.msg
+  cam_msg_2d.msg
+  obj_msg_2d.msg
+  Con_msg_2d.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -148,13 +150,15 @@ include_directories(
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_sub src/sub.cpp)
-add_executable(${PROJECT_NAME}_detect src/detect_markers.cpp)
+
+add_executable(${PROJECT_NAME}_record src/record_markers.cpp)
+add_executable(${PROJECT_NAME}_initialize src/find_solution.cpp)
+add_executable(${PROJECT_NAME}_track src/track.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -164,16 +168,26 @@ add_executable(${PROJECT_NAME}_detect src/detect_markers.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_record ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_sub
+
+target_link_libraries(${PROJECT_NAME}_record
   ${catkin_LIBRARIES}
+  ${pcl_libs} ${OpenCV_LIBS}
+  multicam_mapper dataset cam_config aruco 
 )
 
-target_link_libraries(${PROJECT_NAME}_detect
+target_link_libraries(${PROJECT_NAME}_initialize
   ${catkin_LIBRARIES}
-  #  multicam_mapper dataset cam_config aruco ${pcl_libs} ${OpenCV_LIBS}
+  ${pcl_libs} ${OpenCV_LIBS}
+  multicam_mapper initializer aruco 
+)
+
+target_link_libraries(${PROJECT_NAME}_track
+  ${catkin_LIBRARIES}
+  ${pcl_libs} ${OpenCV_LIBS}
+  multicam_mapper dataset cam_config initializer aruco
 )
 
 #############

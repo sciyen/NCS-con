@@ -1,2 +1,3 @@
-float32[3] pos
-time update_time
+bool active
+int16 cid
+ncs_con/obj_msg[] objs
