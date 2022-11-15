@@ -54,12 +54,8 @@ cv::Mat make_mosaic(vector<cv::Mat> images, int mosaic_width){
     return mosaic;
 }
 
-int get_cam_id(int cid){
-    return cid - 1;
-}
-
 void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
-    const int min_detections_per_marker = 2;
+    const int min_detections_per_marker = 1;
     auto start=chrono::system_clock::now();
 
     ROS_INFO_STREAM(*msg);
@@ -83,7 +79,7 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
     for (auto& cam: msg->cams){
         vector<aruco::Marker> cam_marker;
         for (auto& obj: cam.objs){
-            if (markers_count[obj.oid] >= min_detections_per_marker){
+            if (markers_count[obj.oid] > min_detections_per_marker){
                 // Constructing corners
                 vector<cv::Point2f> corners;
                 for (int i=0; i<4; i++)
@@ -96,9 +92,8 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
             }
         }
 
-        int cid = cam.cid;
         if (cam_marker.size() > 0)
-            valid_markers[get_cam_id(cid)] = cam_marker;
+            valid_markers[cam.cid] = cam_marker;
     }
 
     vector<vector<vector<aruco::Marker>>> frame_detections(1);
@@ -169,27 +164,22 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
 
     for (auto& cam: msg->cams){
         for (auto& obj: cam.objs){
-            int cid = obj.cid-1;
+            int cid = obj.cid;
             int oid = obj.oid;
             if (cid >= 3 || cid < 0){
                 std::cout << "invalid cid " << cid << std::endl;
                 continue;
             }
-            cv::Scalar color(255, 0, 0);
+            cv::Scalar color(255, 255, 0);
             if (markers_count.find(obj.oid) == markers_count.end()){
                 // invalid marker
-                color = cv::Scalar(255, 255, 0);
+                color = cv::Scalar(255, 0, 0);
             }
             vector<vector<cv::Point>> corners(1);
             for (int i=0; i<4; i++)
                 corners[0].push_back(cv::Point(obj.pos[2*i], obj.pos[2*i+1]));
             const cv::Point* pts = &corners[0][0];
             int n = (int)corners[0].size();
-            
-            // for (auto &c : corners)
-            //     for(auto& cc : c)
-            //         std::cout << cc;
-            // std::cout<< std::endl;
 
             cv::polylines(frames[cid], &pts, &n, 1, true, color);
             cv::putText(frames[cid], std::to_string(cid) + ":" + std::to_string(oid), cv::Point(obj.pos[0], obj.pos[1]),

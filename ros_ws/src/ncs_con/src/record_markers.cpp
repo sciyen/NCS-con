@@ -37,10 +37,6 @@ int print_usage(char* argv0) {
     return -1;
 }
 
-int get_cam_id(int cid){
-    return cid - 1;
-}
-
 void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
     if (!output_file.is_open()){
         ROS_WARN("CALLBACK with output file not ready!");
@@ -67,6 +63,7 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
     for (auto& cam: msg->cams){
         vector<aruco::Marker> cam_marker;
         for (auto& obj: cam.objs){
+            // Filter empty detection
             if (markers_count[obj.oid] >= min_detections_per_marker){
                 // Constructing corners
                 vector<cv::Point2f> corners;
@@ -79,8 +76,7 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
                 cam_marker.push_back(m);
             }
         }
-        int cid = cam.cid;
-        valid_markers[get_cam_id(cid)] = cam_marker;
+        valid_markers[cam.cid] = cam_marker;
     }
 
     for (auto& cam: valid_markers){

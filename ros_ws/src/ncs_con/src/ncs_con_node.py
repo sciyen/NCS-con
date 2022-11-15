@@ -19,17 +19,24 @@ if PUB_MODE == '3d':
 
 
 class NcsconThread():
-    def __init__(self, port, pubTopic):
-        self.indata = [{} for i in range(5)]
+    def __init__(self, port, pubTopic, num_cams=3):
         self.port = port
 
         # Constructing message
         if PUB_MODE == '2d':
-            self.msg = Con_msg_2d()
-            self.pub = rospy.Publisher(pubTopic, Con_msg_2d, queue_size=1)
+            self.MsgType = Con_msg_2d
+            self.CamType = cam_msg_2d
+            self.ObjType = obj_msg_2d
         if PUB_MODE == '3d':
-            self.msg = Con_msg()
-            self.pub = rospy.Publisher(pubTopic, Con_msg, queue_size=1)
+            self.MsgType = Con_msg
+            self.CamType = cam_msg
+            self.ObjType = obj_msg
+
+        self.num_cams = num_cams
+        self.msg = self.MsgType()
+        self.msg.cams = [self.CamType() for i in range(num_cams)]
+        self.__reset_buffer()
+        self.pub = rospy.Publisher(pubTopic, self.MsgType, queue_size=1)
 
         in_thread = threading.Thread(target=self.__in_thread)
         in_thread.daemon = True
@@ -59,53 +66,37 @@ class NcsconThread():
             self.__reset_buffer()
 
     def __reset_buffer(self):
-        if PUB_MODE == '2d':
-            self.msg = Con_msg_2d()
-        if PUB_MODE == '3d':
-            self.msg = Con_msg()
+        for i in range(self.num_cams):
+            self.msg.cams[i].active = False
+            self.msg.cams[i].objs = []
 
     def __update(self, data):
         # New incoming socket data from pi
         objs = json.loads(data)
-        cid = objs[u'cid']
+        cid = objs[u'cid'] - 1
 
-        if PUB_MODE == '2d':
-            cm = cam_msg_2d()
-            om = obj_msg_2d()
-        if PUB_MODE == '3d':
-            cm = cam_msg()
-            om = obj_msg()
+        self.msg.cams[cid].cid = cid
 
+        cm = self.CamType()
+        cm.active = True
         cm.cid = cid
-
         obj_list = {}
         for obj in objs[u'objs']:
             oid = obj[u'oid']
             if oid in obj_list:
                 continue
 
-            obj_list[oid] = 1
-            if PUB_MODE == '2d':
-                om = obj_msg_2d()
-            if PUB_MODE == '3d':
-                om = obj_msg()
+            oid = obj[u'oid']
+            om = self.ObjType()
+
             om.cid = cid
             om.oid = oid
             om.pos = obj[u'pos']
             om.update_time = rospy.get_rostime()
             cm.objs.append(om)
 
-        # check if cid exist
-        try:
-            cid_list = [c.cid for c in self.msg.cams]
-            idx = cid_list.index(cid)
-            self.msg.cams[idx] = cm
-        except ValueError:
-            # cid not exist
-            self.msg.cams.append(cm)
-
+        self.msg.cams[cid] = cm
         #print(json.dumps(data, sort_keys=True, indent=2))
-
 
 def main():
     rospy.init_node("ncscon_node")
