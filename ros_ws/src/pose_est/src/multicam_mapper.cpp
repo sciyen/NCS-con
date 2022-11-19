@@ -1226,6 +1226,9 @@ void MultiCamMapper::overlay_markers(cv::Mat &img, int frame_id, int camera_inde
             cv::projectPoints(marker_points_3d,r,transform(cv::Range(0,3),cv::Range(3,4)),mat_arrays.cam_mats[camera_id],mat_arrays.dist_coeffs[camera_id],points_2d);
             for(int j=0;j<4;j++)
                 cv::line(img,points_2d[j],points_2d[(j+1)%4],cv::Scalar(0.0,255.0,0.0),2);
+            
+            cv::putText(img, std::to_string(camera_index) + ":" + std::to_string(marker_id), points_2d[0],
+                cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0.0,255.0,0.0),1);
         }
     }
 }
