@@ -229,7 +229,7 @@ vector< MarkerDetector::MarkerCandidate> MarkerDetector::thresholdAndDetectRecta
     //if image is eroded, minSize must be adapted
      std::vector<cv::Vec4i> hierarchy;
     std::vector<std::vector<cv::Point>> contours;
-      cv::findContours(auxThresImage, contours, cv::noArray(), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+      cv::findContours(auxThresImage, contours, cv::noArray(), RETR_LIST, CHAIN_APPROX_NONE);
        tev.add("find-cont");
      vector<Point> approxCurve;
 //#define _aruco_debug_detectrectangles
@@ -508,7 +508,7 @@ void MarkerDetector::detect(const cv::Mat& input, vector<Marker>& detectedMarker
 
     // it must be a 3 channel image
     if (input.type() == CV_8UC3)
-        cv::cvtColor(input,grey,CV_BGR2GRAY);
+        cv::cvtColor(input,grey,COLOR_BGR2GRAY);
     //  convertToGray(input, grey);
     else grey = input;
     Timer.add("ConvertGrey");
@@ -745,7 +745,7 @@ void MarkerDetector::detect(const cv::Mat& input, vector<Marker>& detectedMarker
             for (unsigned int i = 0; i < detectedMarkers.size(); i++)
                 for (int c = 0; c < 4; c++)
                     Corners.push_back(detectedMarkers[i][c]);
-            cornerSubPix(grey, Corners, cvSize(halfwsize,halfwsize), cvSize(-1, -1),cvTermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 12, 0.005));
+            cornerSubPix(grey, Corners, Size(halfwsize,halfwsize), Size(-1, -1),TermCriteria(cv::TermCriteria::Type::MAX_ITER | cv::TermCriteria::Type::EPS, 12, 0.005));
             // copy back
             for (unsigned int i = 0; i < detectedMarkers.size(); i++)
                 for (int c = 0; c < 4; c++)
@@ -1121,7 +1121,7 @@ void MarkerDetector::cornerUpsample_SUBP(vector<Marker>& MarkerCanditates,   cv:
              vector<cv::Point2f> p2d;p2d.reserve(MarkerCanditates.size()*4);
             for(auto &m:MarkerCanditates)
                 for(auto &point:m) { p2d.push_back(point);}
-              cv::cornerSubPix( imagePyramid[curpyr],p2d,cv::Size(halfwsize,halfwsize),cv::Size(-1,-1),cvTermCriteria(CV_TERMCRIT_ITER , 4,0.5));
+              cv::cornerSubPix( imagePyramid[curpyr],p2d,cv::Size(halfwsize,halfwsize),cv::Size(-1,-1),TermCriteria(TermCriteria::Type::MAX_ITER, 4,0.5));
             int cidx=0;
             for(auto &m:MarkerCanditates)
                 for(auto &point:m) {point =p2d[cidx++];}
@@ -1176,10 +1176,10 @@ void MarkerDetector::draw(Mat out, const vector<Marker>& markers)
 {
     for (unsigned int i = 0; i < markers.size(); i++)
     {
-        cv::line(out, markers[i][0], markers[i][1], cvScalar(255, 0, 0), 2, CV_AA);
-        cv::line(out, markers[i][1], markers[i][2], cvScalar(255, 0, 0), 2, CV_AA);
-        cv::line(out, markers[i][2], markers[i][3], cvScalar(255, 0, 0), 2, CV_AA);
-        cv::line(out, markers[i][3], markers[i][0], cvScalar(255, 0, 0), 2, CV_AA);
+        cv::line(out, markers[i][0], markers[i][1], cv::Scalar(255, 0, 0), 2, LINE_AA);
+        cv::line(out, markers[i][1], markers[i][2], cv::Scalar(255, 0, 0), 2, LINE_AA);
+        cv::line(out, markers[i][2], markers[i][3], cv::Scalar(255, 0, 0), 2, LINE_AA);
+        cv::line(out, markers[i][3], markers[i][0], cv::Scalar(255, 0, 0), 2, LINE_AA);
     }
 }
 

@@ -84,13 +84,11 @@ cv::Mat get_drone_marker_pts(const double w, const double d, const double t, con
     cv::Mat(cv::Point3f( w/2+t,   -d/2, h)).copyTo(pts.col(6));
     cv::Mat(cv::Point3f( w/2+t,    d/2, h)).copyTo(pts.col(7));
 
-    cv::Mat R2z = cv::getRotationMatrix2D(cv::Point2f(0, 0), 90.0f, 1.0f);
+    cv::Mat R2z = cv::getRotationMatrix2D(cv::Point2f(0, 0), 45.0f, 1.0f);
     cv::Mat Rz = cv::Mat::eye(3, 3, CV_64F);
 
     R2z.copyTo(Rz(cv::Rect_<int>(0,0,3,2)));
-    //cv::transform(pts, out_pts, Rz);
     return Rz * pts;
-    //return out_pts;
 }
 
 /* Extract the marker's positions expressed in root marker frame.
@@ -152,7 +150,7 @@ vector<cv::Point3f> mat_to_vec_points(cv::Mat& m){
  *      - realMarkerPos: The markers expressed in body frame
  *      - roolMarkerPos: The markers expressed in root marker frame
  * @Return
- *      - transform: A 4x4 transformation matrix
+ *      - r_T_b: A 4x4 transformation matrix
  */
 cv::Mat estimate_transform_from_drone_to_root_marker(cv::Mat& realMarkerPos, cv::Mat& rootMarkerPos) {
     cv::Mat transform;
@@ -168,14 +166,7 @@ cv::Mat estimate_transform_from_drone_to_root_marker(cv::Mat& realMarkerPos, cv:
     cout << fmt->format(realMarkerPos) << endl;
     auto root_pts = mat_to_vec_points(rootMarkerPos);
     auto real_pts = mat_to_vec_points(realMarkerPos);
-    // int ret = cv::estimateAffine3D(real_pts, root_pts, transform, inliers);
-    int ret = cv::estimateAffine3D(real_pts, root_pts, transform, inliers);
-    //transform = cv::estimateAffine3D(root_pts, real_pts);
-    // TODO: ret handling
-    // TODO: Using new version estimateAffine3D in OpenCV 4.x
-    if (ret < 0)
-        cout << "Error transforming" << endl;
-    cout << "Transformation from root marker to body frame:" << endl << fmt->format(transform) << endl;
+    transform = cv::estimateAffine3D(real_pts, root_pts);
 
     /* Checking for transforming results */
     cv::Mat out = transform(cv::Rect_<int>(0,0,3,3)) * realMarkerPos;
@@ -183,10 +174,10 @@ cv::Mat estimate_transform_from_drone_to_root_marker(cv::Mat& realMarkerPos, cv:
         out.col(i) += transform(cv::Range(0,3),cv::Range(3,4));
     cout << "Transforming results " << endl << fmt->format(out) << endl;
 
-    cv::Mat row = cv::Mat::zeros(1, 4, transform.type());
-    row.at<float>(0, 3) = 1.0f;
-    transform.push_back(row);
-    return transform;
+    cv::Mat r_T_b = cv::Mat::eye(cv::Size(4, 4), transform.type());
+    transform.copyTo(r_T_b(cv::Range(0, 3), cv::Range(0, 4)));
+    cout << "Transformation from root marker to body frame:" << endl << fmt->format(r_T_b) << endl;
+    return r_T_b;
 }
 
 /* Draw the axes of the body frame in given camera's image
@@ -212,26 +203,26 @@ void draw_body_frame(cv::Mat& img, int frame_id, int camera_index, MultiCamMappe
     cv::Rodrigues(transform(cv::Range(0,3),cv::Range(0,3)), rvec);
     cv::Mat tvec = transform(cv::Range(0,3), cv::Range(3,4));
 
-    cv::Mat objectPoints(4, 3, CV_32FC1);
+    cv::Mat objectPoints(3, 4, CV_32FC1);
     objectPoints.at<float>(0, 0) = 0;
-    objectPoints.at<float>(0, 1) = 0;
-    objectPoints.at<float>(0, 2) = 0;
-    objectPoints.at<float>(1, 0) = axis_size;
-    objectPoints.at<float>(1, 1) = 0;
-    objectPoints.at<float>(1, 2) = 0;
+    objectPoints.at<float>(1, 0) = 0;
     objectPoints.at<float>(2, 0) = 0;
-    objectPoints.at<float>(2, 1) = axis_size;
+    objectPoints.at<float>(0, 1) = axis_size;
+    objectPoints.at<float>(1, 1) = 0;
+    objectPoints.at<float>(2, 1) = 0;
+    objectPoints.at<float>(0, 2) = 0;
+    objectPoints.at<float>(1, 2) = axis_size;
     objectPoints.at<float>(2, 2) = 0;
-    objectPoints.at<float>(3, 0) = 0;
-    objectPoints.at<float>(3, 1) = 0;
-    objectPoints.at<float>(3, 2) = axis_size;
+    objectPoints.at<float>(0, 3) = 0;
+    objectPoints.at<float>(1, 3) = 0;
+    objectPoints.at<float>(2, 3) = axis_size;
 
     vector<cv::Point2f> points_2d;
     cv::projectPoints(objectPoints, rvec, tvec, mat_arrays.cam_mats[camera_id], mat_arrays.dist_coeffs[camera_id], points_2d);
     // draw lines of different colours
-    cv::line(img, points_2d[0], points_2d[1], cv::Scalar(0, 0, 255, 255), 1, CV_AA);
-    cv::line(img, points_2d[0], points_2d[2], cv::Scalar(0, 255, 0, 255), 1, CV_AA);
-    cv::line(img, points_2d[0], points_2d[3], cv::Scalar(255, 0, 0, 255), 1, CV_AA);
+    cv::line(img, points_2d[0], points_2d[1], cv::Scalar(0, 0, 255, 255), 1, cv::LINE_AA);
+    cv::line(img, points_2d[0], points_2d[2], cv::Scalar(0, 255, 0, 255), 1, cv::LINE_AA);
+    cv::line(img, points_2d[0], points_2d[3], cv::Scalar(255, 0, 0, 255), 1, cv::LINE_AA);
     cv::putText(img, "x", points_2d[1], cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 255, 255), 2);
     cv::putText(img, "y", points_2d[2], cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0, 255), 2);
     cv::putText(img, "z", points_2d[3], cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 0, 255), 2);
@@ -376,7 +367,7 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
             cv::putText(frames[j],"no reliable detections",cv::Point(100,100),cv::FONT_HERSHEY_SIMPLEX,1.5,cv::Scalar(0,0,255),3);
         else{
             mcm.overlay_markers(frames[j],0,j);
-            draw_body_frame(frames[j], 0, j, mat_arrays, 0.01f);
+            draw_body_frame(frames[j], 0, j, mat_arrays, 0.1f);
         }
     }
     cv::Mat mosaic=make_mosaic(frames, 840);
@@ -438,7 +429,6 @@ int main(int argc, char *argv[]){
     body_trans_to_root = estimate_transform_from_drone_to_root_marker(realMarkerPose, rootMarkerPos);
 
     ROS_INFO("Start tracking");
-    return 0;
 
     ros::init(argc, argv, "listener");
     ros::NodeHandle n;

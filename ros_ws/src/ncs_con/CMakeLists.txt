@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
-find_package(OpenCV 3.0.0 REQUIRED)
+find_package(OpenCV 4.5.3 REQUIRED)
 find_package(PCL)
 
 if(PCL_FOUND)
