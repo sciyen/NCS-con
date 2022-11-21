@@ -146,6 +146,7 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/ncs-con.cpp
 # )
+add_library(coordinates src/coordinates.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -184,10 +185,15 @@ target_link_libraries(${PROJECT_NAME}_initialize
   multicam_mapper initializer aruco 
 )
 
+target_link_libraries(coordinates
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
 target_link_libraries(${PROJECT_NAME}_track
   ${catkin_LIBRARIES}
   ${pcl_libs} ${OpenCV_LIBS}
-  multicam_mapper dataset cam_config initializer aruco
+  multicam_mapper dataset cam_config initializer aruco coordinates
 )
 
 #############
