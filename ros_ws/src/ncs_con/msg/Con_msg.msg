@@ -1,1 +1,1 @@
-ncs_con/obj_msg[] objs
+ncs_con/cam_msg[] cams
