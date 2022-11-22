@@ -1,6 +1,7 @@
 #ifndef COORDINATES_H
 #define COORDINATES_H
 
+#include "ros/ros.h"
 #include "pose_est/multicam_mapper.h"
 #include <opencv2/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -15,6 +16,8 @@ public:
     void init(MultiCamMapper* const _mcm, const double _w, const double _d, const double _t, const double _h, const int _num_pts=8);
 
     bool calc_pos_in_global(cv::Mat& out);
+
+    cv::Mat get_I_T_B(){return I_T_B;};
 
     void render(vector<cv::Mat>& img, float axis_size=0.1f);
 

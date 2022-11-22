@@ -216,6 +216,7 @@ bool Coordinates::calc_pos_in_global(cv::Mat& out){
             tvec /= (double)num_initialization_samples;
             rC_T_I = vec_to_transform(rvec, tvec);
             I_T_rC = transform_inverse(rC_T_I);
+            ROS_INFO("Global frame initialized");
         }
 
         count_initialization++;

@@ -68,6 +68,7 @@ add_message_files(
   cam_msg_2d.msg
   obj_msg_2d.msg
   Con_msg_2d.msg
+  Est_pose.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -147,6 +148,7 @@ include_directories(
 #   src/${PROJECT_NAME}/ncs-con.cpp
 # )
 add_library(coordinates src/coordinates.cpp)
+add_library(tracker src/tracker.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -190,10 +192,16 @@ target_link_libraries(coordinates
   ${OpenCV_LIBS}
 )
 
-target_link_libraries(${PROJECT_NAME}_track
+target_link_libraries(tracker
   ${catkin_LIBRARIES}
   ${pcl_libs} ${OpenCV_LIBS}
   multicam_mapper dataset cam_config initializer aruco coordinates
+)
+
+target_link_libraries(${PROJECT_NAME}_track
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+  tracker
 )
 
 #############
