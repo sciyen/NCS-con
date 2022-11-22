@@ -1,4 +1,4 @@
-# Filtering Computer (Jetson Nano)
+# Pose Estimation (Jetson Nano)
 
 ```bash
 $ cd ~/Project/NCS-con/ros_ws
