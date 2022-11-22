@@ -14,12 +14,14 @@
 
 #include <opencv2/core/hal/interface.h>
 
+#define TRACK_DEBUG
+
 using namespace std;
+
 size_t num_cams = 3;
 
 Initializer initializer;
 MultiCamMapper mcm;
-// cv::Mat body_trans_to_root;
 Coordinates coordinate;
 
 void print_usage(){
@@ -61,7 +63,8 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
     const int min_detections_per_marker = 1;
     auto start=chrono::system_clock::now();
 
-    ROS_INFO_STREAM(*msg);
+#pragma region packing_from_topic
+    // ROS_INFO_STREAM(*msg);
     // marker count
     map<int, int> markers_count;
     for (auto& cam: msg->cams){
@@ -71,11 +74,6 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
             else
                 markers_count[obj.oid] = 1;
         }
-    }
-
-    // Logging markers
-    for (auto it=markers_count.begin(); it!=markers_count.end(); ++it){
-        std::cout << "Marker " << it->first << ": " << it->second << std::endl;
     }
 
     vector<vector<aruco::Marker>> valid_markers(num_cams);
@@ -102,6 +100,12 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
     vector<vector<vector<aruco::Marker>>> frame_detections(1);
     frame_detections[0] = valid_markers;
 
+#ifdef TRACK_DEBUG
+    // Logging markers
+    for (auto it=markers_count.begin(); it!=markers_count.end(); ++it){
+        std::cout << "Marker " << it->first << ": " << it->second << std::endl;
+    }
+
     int c = 0;
     for (auto cam: valid_markers){
         std::cout << "cam" << c << ": ";
@@ -123,7 +127,10 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
         }
         c++;
     }
+#endif
+#pragma endregion packing_from_topic
 
+#pragma region object_pose_estimation
     size_t num_wi_frames=0;
     double sum_detections_duration=0;
     double sum_inf_duration=0;
@@ -142,29 +149,19 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
         initializer.obtain_pose_estimations();
         initializer.init_object_transforms();
 
-        std::cout << "obj_trans: ";
-        for (auto& o: initializer.get_object_transforms()){
-            std::cout << o.first << ", ";
-        }
-        std::cout << std::endl;
-
-        std::cout << "obj_trans: ";
-        for (auto& o: initializer.get_frame_cam_markers()){
-            std::cout << o.first << ", ";
-        }
-        std::cout << std::endl;
-
         mcm.init(initializer.get_object_transforms(),initializer.get_frame_cam_markers());
         mcm.track();
     }
     chrono::duration<double> duration=chrono::system_clock::now()-start;
+#pragma endregion object_pose_estimation
 
-    // Visualizing
+#pragma region Visualizing
     vector<cv::Mat> frames;
     for(size_t i=0; i<3; i++){
         frames.push_back(cv::Mat::zeros(480, 640, CV_8UC3));
     }
 
+    // Draw detected markers
     for (auto& cam: msg->cams){
         for (auto& obj: cam.objs){
             int cid = obj.cid;
@@ -190,6 +187,7 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
         }
     }
     
+    // Draw estimated poses
     for(size_t j=0; j<frame_detections[0].size(); j++){
         if(num_detections==0)
             cv::putText(frames[j],"no reliable detections",cv::Point(100,100),cv::FONT_HERSHEY_SIMPLEX,1.5,cv::Scalar(0,0,255),3);
@@ -197,14 +195,20 @@ void msgCallback(const ncs_con::Con_msg_2d::ConstPtr& msg) {
             mcm.overlay_markers(frames[j],0,j);
     }
 
+    // Draw coordinates
     if(num_detections>0){
+        cv::Mat I_T_B;
+        int ret = coordinate.calc_pos_in_global(I_T_B);
+        if (ret)
+            cout << I_T_B << endl;
         coordinate.render(frames, 0.1f);
     }
 
     cv::Mat mosaic=make_mosaic(frames, 840);
-    std::cout << "mat size " << mosaic.size() << std::endl;
     cv::imshow("Tracking",mosaic);
     cv::waitKey(1);
+#pragma endregion Visualizing
+
 }
 
 int main(int argc, char *argv[]){
@@ -259,7 +263,7 @@ int main(int argc, char *argv[]){
 
     ROS_INFO("Start tracking");
 
-    ros::init(argc, argv, "listener");
+    ros::init(argc, argv, "pose_estimator");
     ros::NodeHandle n;
     ros::Subscriber sub = n.subscribe("ncscon_topic", 1000, msgCallback);
 
